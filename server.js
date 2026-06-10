@@ -1,86 +1,70 @@
+import 'dotenv/config';
 import express from 'express';
 import cors from 'cors';
-import dotenv from 'dotenv';
-import { createClient } from '@supabase/supabase-js';
+import helmet from 'helmet';
+import morgan from 'morgan';
 
-dotenv.config();
+import siteSettingsRouter from './routes/siteSettings.js';
+import pagesRouter from './routes/pages.js';
+import callToActionsRouter from './routes/callToActions.js';
+import integrationsRouter from './routes/integrations.js';
+import servicesRouter from './routes/services.js';
+import providersRouter from './routes/providers.js';
+import locationsRouter from './routes/locations.js';
+import officeHoursRouter from './routes/officeHours.js';
+import holidayClosuresRouter from './routes/holidayClosures.js';
+import faqsRouter from './routes/faqs.js';
+import announcementsRouter from './routes/announcements.js';
+import legalPagesRouter from './routes/legalPages.js';
+import navigationItemsRouter from './routes/navigationItems.js';
 
 const app = express();
 const PORT = process.env.PORT || 3001;
 
-const supabaseUrl = process.env.SUPABASE_URL;
-const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+// ── Security & logging ───────────────────────────────────────────────────────
+app.use(helmet());
+app.use(morgan('dev'));
 
-let supabase = null;
-if (supabaseUrl && supabaseKey) {
-  supabase = createClient(supabaseUrl, supabaseKey);
-}
-
+// ── CORS ─────────────────────────────────────────────────────────────────────
 app.use(cors({
-  origin: true,
-  credentials: true
+  origin: process.env.FRONTEND_URL || 'http://localhost:3000',
+  credentials: true,
 }));
 
+// ── Body parsing ─────────────────────────────────────────────────────────────
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
+// ── Routes ───────────────────────────────────────────────────────────────────
 app.get('/api/health', (req, res) => {
-  res.json({ status: 'ok', message: 'Server is running' });
+  res.json({ status: 'ok' });
 });
 
-app.post('/api/contact', async (req, res) => {
-  try {
-    const { name, email, phone, message, subject } = req.body;
+app.use('/api/site-settings',  siteSettingsRouter);
+app.use('/api/pages',          pagesRouter);
+app.use('/api/ctas',           callToActionsRouter);
+app.use('/api/integrations',   integrationsRouter);
+app.use('/api/services',       servicesRouter);
+app.use('/api/providers',      providersRouter);
+app.use('/api/locations',      locationsRouter);
+app.use('/api/office-hours',   officeHoursRouter);
+app.use('/api/holidays',       holidayClosuresRouter);
+app.use('/api/faqs',           faqsRouter);
+app.use('/api/announcements',  announcementsRouter);
+app.use('/api/legal',          legalPagesRouter);
+app.use('/api/navigation',     navigationItemsRouter);
 
-    if (!name || !email || !message) {
-      return res.status(400).json({ 
-        error: 'Name, email, and message are required' 
-      });
-    }
+// ── 404 ───────────────────────────────────────────────────────────────────────
+app.use((req, res) => {
+  res.status(404).json({ error: 'Not found' });
+});
 
-    if (supabase) {
-      const { data, error } = await supabase
-        .from('contact_submissions')
-        .insert([
-          {
-            name,
-            email,
-            phone: phone || null,
-            subject: subject || 'General Inquiry',
-            message,
-            created_at: new Date().toISOString()
-          }
-        ])
-        .select();
-
-      if (error) {
-        console.error('Supabase error:', error);
-        return res.status(500).json({ error: 'Failed to save contact form' });
-      }
-
-      return res.json({ 
-        success: true, 
-        message: 'Contact form submitted successfully',
-        data 
-      });
-    }
-
-    console.log('Contact form submission:', { name, email, phone, subject, message });
-    
-    res.json({ 
-      success: true, 
-      message: 'Contact form submitted successfully (logged only)' 
-    });
-  } catch (error) {
-    console.error('Error processing contact form:', error);
-    res.status(500).json({ error: 'Internal server error' });
-  }
+// ── Global error handler ─────────────────────────────────────────────────────
+app.use((err, req, res, next) => {
+  console.error(err.message);
+  res.status(err.status || 500).json({ error: err.message || 'Internal server error' });
 });
 
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
-  if (!supabase) {
-    console.log('Warning: Supabase not configured. Some features may not work.');
-  }
 });
-
