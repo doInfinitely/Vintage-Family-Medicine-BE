@@ -11,7 +11,7 @@ router.get('/active', async (req, res, next) => {
       .select('*')
       .eq('is_visible', true)
       .lte('start_date', today)
-      .gte('end_date', today);
+      .or(`end_date.is.null,end_date.gte.${today}`);
     if (error) throw new Error(error.message);
     res.json(data);
   } catch (err) {
