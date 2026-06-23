@@ -10,7 +10,10 @@ router.get('/', async (req, res, next) => {
       .select('id')
       .eq('is_primary', true)
       .single();
-    if (locErr) throw new Error(locErr.message);
+    if (locErr) {
+      if (locErr.code === 'PGRST116') return res.status(404).json({ error: 'No primary location found' });
+      throw new Error(locErr.message);
+    }
 
     const { data, error } = await supabase
       .from('office_hours')

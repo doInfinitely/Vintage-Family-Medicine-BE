@@ -8,7 +8,7 @@ router.get('/', async (req, res, next) => {
   try {
     const { data, error } = await supabase
       .from('integrations')
-      .select('provider, display_name, base_url, widget_script_url, widget_id, public_config_json')
+      .select('provider, display_name, base_url, widget_script_url, public_config_json')
       .eq('is_enabled', true);
     if (error) throw new Error(error.message);
     res.json(data);

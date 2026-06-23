@@ -10,7 +10,10 @@ router.get('/primary', async (req, res, next) => {
       .select('*')
       .eq('is_primary', true)
       .single();
-    if (error) throw new Error(error.message);
+    if (error) {
+      if (error.code === 'PGRST116') return res.status(404).json({ error: 'No primary location found' });
+      throw new Error(error.message);
+    }
     res.json(data);
   } catch (err) {
     next(err);
